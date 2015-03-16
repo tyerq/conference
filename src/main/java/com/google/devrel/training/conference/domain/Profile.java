@@ -1,8 +1,6 @@
 package com.google.devrel.training.conference.domain;
 
 import com.google.devrel.training.conference.form.ProfileForm.TeeShirtSize;
-import com.googlecode.objectify.annotation.Entity;
-import com.googlecode.objectify.annotation.Id;
 
 
 // TODO indicate that this class is an Entity
