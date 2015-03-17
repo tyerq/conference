@@ -9,6 +9,7 @@ import com.google.devrel.training.conference.Constants;
 import com.google.devrel.training.conference.domain.Profile;
 import com.google.devrel.training.conference.form.ProfileForm;
 import com.google.devrel.training.conference.form.ProfileForm.TeeShirtSize;
+import com.google.devrel.training.conference.service.OfyService;
 import com.googlecode.objectify.Key;
 
 /**
@@ -82,12 +83,15 @@ public class ConferenceApi {
 
 		// Create a new Profile entity from the
 		// userId, displayName, mainEmail and teeShirtSize
-		Profile profile = new Profile(userId, displayName, mainEmail,
-				teeShirtSize);
+		Profile profile = getProfile(user);
+		if (profile == null)
+			profile = new Profile(userId, displayName, mainEmail, teeShirtSize);
+		else
+			profile.update(displayName, teeShirtSize);
 
 		// TODO 3 (In Lesson 3)
 		// Save the Profile entity in the datastore
-
+		ofy().save().entity(profile).now();
 		// Return the profile
 		return profile;
 	}
@@ -110,9 +114,12 @@ public class ConferenceApi {
 
 		// TODO
 		// load the Profile Entity
-		String userId = ""; // TODO
-		Key key = null; // TODO
-		Profile profile = null; // TODO load the Profile entity
+		String userId = user.getUserId(); // TODONE
+		Key key = Key.create(Profile.class, userId); // TODONE
+		Profile profile = (Profile) ofy().load().key(key).now(); // TODONE load
+																	// the
+																	// Profile
+																	// entity
 		return profile;
 	}
 }
