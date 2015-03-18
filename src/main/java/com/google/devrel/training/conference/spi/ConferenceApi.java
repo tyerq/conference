@@ -91,7 +91,7 @@ public class ConferenceApi {
 
 		// TODO 3 (In Lesson 3)
 		// Save the Profile entity in the datastore
-		ofy().save().entity(profile).now();
+		OfyService.ofy().save().entity(profile).now();
 		// Return the profile
 		return profile;
 	}
@@ -116,7 +116,7 @@ public class ConferenceApi {
 		// load the Profile Entity
 		String userId = user.getUserId(); // TODONE
 		Key key = Key.create(Profile.class, userId); // TODONE
-		Profile profile = (Profile) ofy().load().key(key).now(); // TODONE load
+		Profile profile = (Profile) OfyService.ofy().load().key(key).now(); // TODONE load
 																	// the
 																	// Profile
 																	// entity
