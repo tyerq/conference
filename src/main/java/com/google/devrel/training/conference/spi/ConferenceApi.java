@@ -46,7 +46,7 @@ public class ConferenceApi {
 	// conforms to the fields defined in ProfileForm
 	// TODONE 1 Pass the ProfileForm parameter
 	// TODONE 2 Pass the User parameter
-	public Profile saveProfile(ProfileForm profileForm, User user)
+	public Profile saveProfile(User user, ProfileForm profileForm)
 			throws UnauthorizedException {
 
 		String userId = null;
@@ -62,12 +62,16 @@ public class ConferenceApi {
 		// TODONE 1
 		// Set the teeShirtSize to the value sent by the ProfileForm, if sent
 		// otherwise leave it as the default value
-		teeShirtSize = profileForm.getTeeShirtSize();
+		if (profileForm.getTeeShirtSize() != null)
+			teeShirtSize = profileForm.getTeeShirtSize();
 
 		// TODONE 1
 		// Set the displayName to the value sent by the ProfileForm, if sent
 		// otherwise set it to null
-		displayName = profileForm.getDisplayName();
+		if (profileForm.getDisplayName() != null)
+			displayName = profileForm.getDisplayName();
+		else
+			displayName = null;
 
 		// TODONE 2
 		// Get the userId and mainEmail
@@ -78,14 +82,15 @@ public class ConferenceApi {
 		// If the displayName is null, set it to default value based on the
 		// user's email
 		// by calling extractDefaultDisplayNameFromEmail(...)
-		if (displayName == null)
-			displayName = extractDefaultDisplayNameFromEmail(mainEmail);
 
 		// Create a new Profile entity from the
 		// userId, displayName, mainEmail and teeShirtSize
 		Profile profile = getProfile(user);
-		if (profile == null)
+		if (profile == null){
+			if (displayName == null)
+				displayName = extractDefaultDisplayNameFromEmail(mainEmail);
 			profile = new Profile(userId, displayName, mainEmail, teeShirtSize);
+		}
 		else
 			profile.update(displayName, teeShirtSize);
 
@@ -116,10 +121,11 @@ public class ConferenceApi {
 		// load the Profile Entity
 		String userId = user.getUserId(); // TODONE
 		Key key = Key.create(Profile.class, userId); // TODONE
-		Profile profile = (Profile) OfyService.ofy().load().key(key).now(); // TODONE load
-																	// the
-																	// Profile
-																	// entity
+		Profile profile = (Profile) OfyService.ofy().load().key(key).now(); // TODONE
+																			// load
+		// the
+		// Profile
+		// entity
 		return profile;
 	}
 }
