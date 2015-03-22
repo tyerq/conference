@@ -4,14 +4,20 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import javax.inject.Named;
+
 import com.google.api.server.spi.config.Api;
 import com.google.api.server.spi.config.ApiMethod;
 import com.google.api.server.spi.config.ApiMethod.HttpMethod;
 import com.google.api.server.spi.response.ConflictException;
 import com.google.api.server.spi.response.ForbiddenException;
+import com.google.api.server.spi.response.NotFoundException;
 import com.google.api.server.spi.response.UnauthorizedException;
+import com.google.appengine.api.memcache.MemcacheService;
+import com.google.appengine.api.memcache.MemcacheServiceFactory;
 import com.google.appengine.api.users.User;
 import com.google.devrel.training.conference.Constants;
+import com.google.devrel.training.conference.domain.Announcement;
 import com.google.devrel.training.conference.domain.Conference;
 import com.google.devrel.training.conference.domain.Profile;
 import com.google.devrel.training.conference.form.ConferenceForm;
@@ -22,10 +28,6 @@ import com.google.devrel.training.conference.service.OfyService;
 import com.googlecode.objectify.Key;
 import com.googlecode.objectify.Work;
 import com.googlecode.objectify.cmd.Query;
-
-import javax.inject.Named;
-
-import com.google.api.server.spi.response.NotFoundException;
 
 /**
  * Defines conference APIs.
@@ -236,6 +238,26 @@ public class ConferenceApi {
 		// Profiles.
 		OfyService.ofy().load().keys(organizersKeyList);
 		return result;
+	}
+
+	public List<Conference> filterPlayground() {
+		Query<Conference> query = OfyService.ofy().load()
+				.type(Conference.class);
+		// Filter on city
+		query = query.filter("city =", "London");
+		// Find conferences in June
+		query = query.filter("month =", 6);
+		// Add a filter for topic = "Medical Innovations"
+		query = query.filter("topics =", "Medical Innovations");
+		// Add a filter for maxAttendees
+		query = query.filter("maxAttendees >", 10).order("maxAttendees")
+				.order("name");
+		/*
+		 * // multiple sort orders query = query.filter("city =",
+		 * "Tokyo").filter("seatsAvailable <", 10). filter("seatsAvailable >" ,
+		 * 0).order("seatsAvailable").order("name"). order("month");
+		 */
+		return query.list();
 	}
 
 	@ApiMethod(name = "getConferencesCreated", path = "getConferencesCreated", httpMethod = HttpMethod.POST)
@@ -499,32 +521,36 @@ public class ConferenceApi {
 		if (user == null) {
 			throw new UnauthorizedException("Authorization required");
 		}
-		WrappedBoolean result = OfyService.ofy().transact(new Work<WrappedBoolean>() {
-			@Override
-			public WrappedBoolean run() {
-				Key<Conference> conferenceKey = Key
-						.create(websafeConferenceKey);
-				Conference conference = OfyService.ofy().load().key(conferenceKey).now();
-				// 404 when there is no Conference with the given conferenceId.
-				if (conference == null) {
-					return new WrappedBoolean(false,
-							"No Conference found with key: "
-									+ websafeConferenceKey);
-				}
-				// Un-registering from the Conference.
-				Profile profile = getProfileFromUser(user);
-				if (profile.getConferenceKeysToAttend().contains(
-						websafeConferenceKey)) {
-					profile.unregisterFromConference(websafeConferenceKey);
-					conference.giveBackSeats(1);
-					OfyService.ofy().save().entities(profile, conference).now();
-					return new WrappedBoolean(true);
-				} else {
-					return new WrappedBoolean(false,
-							"You are not registered for this conference");
-				}
-			}
-		});
+		WrappedBoolean result = OfyService.ofy().transact(
+				new Work<WrappedBoolean>() {
+					@Override
+					public WrappedBoolean run() {
+						Key<Conference> conferenceKey = Key
+								.create(websafeConferenceKey);
+						Conference conference = OfyService.ofy().load()
+								.key(conferenceKey).now();
+						// 404 when there is no Conference with the given
+						// conferenceId.
+						if (conference == null) {
+							return new WrappedBoolean(false,
+									"No Conference found with key: "
+											+ websafeConferenceKey);
+						}
+						// Un-registering from the Conference.
+						Profile profile = getProfileFromUser(user);
+						if (profile.getConferenceKeysToAttend().contains(
+								websafeConferenceKey)) {
+							profile.unregisterFromConference(websafeConferenceKey);
+							conference.giveBackSeats(1);
+							OfyService.ofy().save()
+									.entities(profile, conference).now();
+							return new WrappedBoolean(true);
+						} else {
+							return new WrappedBoolean(false,
+									"You are not registered for this conference");
+						}
+					}
+				});
 		// if result is false
 		if (!result.getResult()) {
 			if (result.getReason().contains("No Conference found with key")) {
@@ -535,6 +561,15 @@ public class ConferenceApi {
 		}
 		// NotFoundException is actually thrown here.
 		return new WrappedBoolean(result.getResult());
+	}
+
+	@ApiMethod(name = "getAnnouncement", path = "announcement", httpMethod = HttpMethod.GET)
+	public Announcement getAnnouncement() {
+		// TODONE GET announcement from memcache by key and if it exist return it
+        MemcacheService memcacheService = MemcacheServiceFactory.getMemcacheService();
+		Announcement myvalue = (Announcement) memcacheService.get(Constants.MEMCACHE_ANNOUNCEMENTS_KEY);
+
+		return myvalue;
 	}
 
 }
